@@ -7,9 +7,13 @@ import os
 app = FastAPI()
 
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
-TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_topic_pg')
+TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_postgres')
 
-@app.post("/send-to-kafka")
+@app.get("/")
+def health_check_postgres():
+    return {"status": "ok", "message": "Producer Postgres running"}
+
+@app.post("/send-to-kafka-postgres")
 def send_to_kafka_postgres():
     try:
         producer = KafkaProducer(
@@ -31,7 +35,8 @@ def send_to_kafka_postgres():
                 "dob": row['DOB'],
                 "interests": row['Interests'],
                 "city": row['City'],
-                "country": row['Country']
+                "country": row['Country'],
+                "source": "postgres"
             }
             producer.send(TOPIC, value=record)
             print(f"[→] Enviado a Kafka (Postgres): {record}")

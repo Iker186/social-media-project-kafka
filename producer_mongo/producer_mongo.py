@@ -7,9 +7,13 @@ import os
 app = FastAPI()
 
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
-TOPIC = os.getenv('KAFKA_TOPIC', 'results_topic')
+TOPIC = os.getenv('KAFKA_TOPIC_MONGO', 'results_topic_mongo')
 
-@app.post("/send-to-kafka")
+@app.get("/")
+def health_check_mongo():
+    return {"status": "ok", "message": "Producer Mongo running"}
+
+@app.post("/send-to-kafka-mongo")
 def send_to_kafka():
     try:
         producer = KafkaProducer(
@@ -31,7 +35,8 @@ def send_to_kafka():
                 "dob": row['DOB'],
                 "interests": row['Interests'],
                 "city": row['City'],
-                "country": row['Country']
+                "country": row['Country'],
+                "source": "mongo"
             }
             producer.send(TOPIC, value=record)
             print(f"[→] Enviado a Kafka (Mongo): {record}")

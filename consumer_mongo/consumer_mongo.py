@@ -4,7 +4,7 @@ import json
 import os
 
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
-TOPIC = os.getenv('KAFKA_TOPIC', 'results_topic')
+TOPIC = os.getenv('KAFKA_TOPIC_MONGO', 'results_topic_mongo')
 MONGO_URI = os.getenv('MONGO_URI')
 DB_NAME = 'social_data'
 COLLECTION_NAME = 'results'
@@ -36,6 +36,10 @@ skip_count = 0
 
 for message in consumer:
     record = message.value
+
+    if record.get("source") != "mongo":
+        continue
+    
     user_id = record.get("user_id")
 
     if collection.find_one({"user_id": user_id}):

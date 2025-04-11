@@ -5,7 +5,7 @@ import os
 
 # Configuración de Kafka y PostgreSQL
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
-TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_topic')
+TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_postgres')
 MAX_MENSAJES = 100000
 
 POSTGRES_CONFIG = {
@@ -75,6 +75,10 @@ for message in consumer:
         break
 
     record = message.value
+
+    if record.get("source") != "postgres":
+        continue
+
     user_id = record.get('user_id')
 
     # Comprobar si ya existe ese user_id
