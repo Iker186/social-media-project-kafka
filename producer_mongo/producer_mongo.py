@@ -9,10 +9,6 @@ app = FastAPI()
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
 TOPIC = os.getenv('KAFKA_TOPIC_MONGO', 'results_topic_mongo')
 
-@app.get("/")
-def health_check_mongo():
-    return {"status": "ok", "message": "Producer Mongo running"}
-
 @app.post("/send-to-kafka-mongo")
 def send_to_kafka():
     try:

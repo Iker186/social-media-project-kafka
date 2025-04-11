@@ -9,9 +9,8 @@ app = FastAPI()
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
 TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_postgres')
 
-@app.get("/")
-def health_check_postgres():
-    return {"status": "ok", "message": "Producer Postgres running"}
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 @app.post("/send-to-kafka-postgres")
 def send_to_kafka_postgres():

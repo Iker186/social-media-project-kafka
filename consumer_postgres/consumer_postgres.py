@@ -135,6 +135,3 @@ def get_data_postgres():
         return {"status": "ok", "data": data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
