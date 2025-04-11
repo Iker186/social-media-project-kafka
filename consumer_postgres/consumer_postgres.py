@@ -3,7 +3,6 @@ import json
 import psycopg2
 import os
 
-# Configuración de Kafka y PostgreSQL
 KAFKA_BROKER = os.getenv('KAFKA_SERVER')
 TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_postgres')
 MAX_MENSAJES = 100000
@@ -21,7 +20,6 @@ try:
     conn = psycopg2.connect(**POSTGRES_CONFIG)
     cur = conn.cursor()
 
-    # Crear la tabla si no existe
     cur.execute("""
     CREATE TABLE IF NOT EXISTS results (
         user_id INT PRIMARY KEY,
@@ -36,7 +34,6 @@ try:
     conn.commit()
     print("✅ Tabla creada o verificada en PostgreSQL.")
 
-    # Verificar si ya existen los 100,000 registros
     cur.execute("SELECT COUNT(*) FROM results")
     total_existentes = cur.fetchone()[0]
 
@@ -50,7 +47,6 @@ except Exception as e:
     print(f"❌ Error al conectar a PostgreSQL: {e}")
     exit(1)
 
-# Consumidor de Kafka
 consumer = KafkaConsumer(
     TOPIC,
     bootstrap_servers=KAFKA_BROKER,
@@ -61,7 +57,7 @@ consumer = KafkaConsumer(
     auto_offset_reset='earliest',
     enable_auto_commit=True,
     value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-    consumer_timeout_ms=20000  # Opcional para cortar si no llegan más mensajes
+    consumer_timeout_ms=20000  
 )
 
 print(f"🛰 Escuchando mensajes del topic '{TOPIC}'...")
@@ -81,7 +77,6 @@ for message in consumer:
 
     user_id = record.get('user_id')
 
-    # Comprobar si ya existe ese user_id
     cur.execute("SELECT 1 FROM results WHERE user_id = %s", (user_id,))
     if cur.fetchone():
         print(f"[⏭] Registro con user_id {user_id} ya existe. Saltando.")

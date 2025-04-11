@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # MongoDB
   mongo:
     image: mongo:latest
     environment:
@@ -13,7 +12,6 @@ services:
       - kafka-network
     restart: always
 
-  # PostgreSQL
   postgres:
     image: postgres:latest
     environment:
@@ -24,11 +22,10 @@ services:
       - kafka-network
     restart: always
 
-  # Consumer Mongo
   consumer-mongo:
     image: iker186/consumer-mongo:latest
     environment:
-      KAFKA_SERVER: ${KAFKA_SERVER}  # Redpanda Kafka Server
+      KAFKA_SERVER: ${KAFKA_SERVER}  
       KAFKA_TOPIC_MONGO: ${KAFKA_TOPIC_MONGO}
       MONGO_URI: ${MONGO_URI}
       KAFKA_USERNAME: ${KAFKA_USERNAME}
@@ -39,11 +36,10 @@ services:
       - kafka-network
     restart: always
 
-  # Consumer PostgreSQL
   consumer-postgres:
     image: iker186/consumer-postgres:latest
     environment:
-      KAFKA_SERVER: ${KAFKA_SERVER}  # Redpanda Kafka Server
+      KAFKA_SERVER: ${KAFKA_SERVER}  
       KAFKA_TOPIC_POSTGRES: ${KAFKA_TOPIC_POSTGRES}
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_URI: ${POSTGRES_URI}
@@ -59,11 +55,10 @@ services:
       - kafka-network
     restart: always
 
-  # Producer Mongo
   producer-mongo:
     image: iker186/producer-mongo:latest
     environment:
-      KAFKA_SERVER: ${KAFKA_SERVER}  # Redpanda Kafka Server
+      KAFKA_SERVER: ${KAFKA_SERVER} 
       KAFKA_TOPIC_MONGO: ${KAFKA_TOPIC_MONGO}
       MONGO_URI: ${MONGO_URI}
       KAFKA_USERNAME: ${KAFKA_USERNAME}
@@ -74,11 +69,10 @@ services:
       - kafka-network
     restart: always
 
-  # Producer PostgreSQL
   producer-postgres:
     image: iker186/producer-postgres:latest
     environment:
-      KAFKA_SERVER: ${KAFKA_SERVER}  # Redpanda Kafka Server
+      KAFKA_SERVER: ${KAFKA_SERVER} 
       KAFKA_TOPIC_POSTGRES: ${KAFKA_TOPIC_POSTGRES}
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_URI: ${POSTGRES_URI}
