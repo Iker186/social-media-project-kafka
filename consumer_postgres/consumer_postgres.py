@@ -117,21 +117,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.get("/get-data-postgres")
-def get_data_postgres():
-    try:
-        conn = psycopg2.connect(**POSTGRES_CONFIG)
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM results")
-        rows = cur.fetchall()
-
-        columns = [desc[0] for desc in cur.description]
-        data = [dict(zip(columns, row)) for row in rows]
-
-        cur.close()
-        conn.close()
-
-        return {"status": "ok", "data": data}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
