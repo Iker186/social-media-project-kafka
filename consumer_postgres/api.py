@@ -6,7 +6,6 @@ import traceback
 
 app = FastAPI()
 
-# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,13 +13,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuración PostgreSQL
 POSTGRES_CONFIG = {
     "dbname": os.getenv('POSTGRES_DB'),
     "user": os.getenv('POSTGRES_USER'),
     "password": os.getenv('POSTGRES_PASSWORD'),
     "host": os.getenv('POSTGRES_HOST'),
-    "port": os.getenv('POSTGRES_PORT', '5432')  # puerto por defecto corregido
+    "port": os.getenv('POSTGRES_PORT', '21406')  # puerto por defecto corregido
 }
 
 @app.get("/get-data-postgres")
