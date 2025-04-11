@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 import os
+import traceback
 
 app = FastAPI()
 
@@ -19,7 +20,7 @@ POSTGRES_CONFIG = {
     "user": os.getenv('POSTGRES_USER'),
     "password": os.getenv('POSTGRES_PASSWORD'),
     "host": os.getenv('POSTGRES_HOST'),
-    "port": os.getenv('POSTGRES_PORT', '21406')
+    "port": os.getenv('POSTGRES_PORT', '5432')  # puerto por defecto corregido
 }
 
 @app.get("/get-data-postgres")
@@ -31,11 +32,19 @@ def get_data_postgres():
         cur.execute("SELECT * FROM results")
         rows = cur.fetchall()
         columns = [desc[0] for desc in cur.description]
+
         data = [dict(zip(columns, row)) for row in rows]
 
-        cur.close()
-        conn.close()
-
         return {"status": "ok", "data": data}
+
     except Exception as e:
+        print("❌ Error al obtener datos de PostgreSQL:")
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
+
+    finally:
+        try:
+            if cur: cur.close()
+            if conn: conn.close()
+        except:
+            pass
