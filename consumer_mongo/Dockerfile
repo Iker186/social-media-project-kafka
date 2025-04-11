@@ -1,10 +1,10 @@
 FROM python:3.11-slim
 
-WORKDIR /
+WORKDIR /app
 
 COPY . .
 
-RUN pip install --no-cache-dir kafka-python psycopg2-binary uvicorn
+RUN pip install --no-cache-dir kafka-python pymongo fastapi uvicorn
 
 EXPOSE 8000
 
