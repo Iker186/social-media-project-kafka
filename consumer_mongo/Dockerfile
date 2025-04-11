@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copia los archivos necesarios
-COPY consumer_mongo.py ./
+COPY consumer_mongo/consumer_mongo.py ./
 
 # Instala dependencias
 RUN pip install --no-cache-dir kafka-python pymongo

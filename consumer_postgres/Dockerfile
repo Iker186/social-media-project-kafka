@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copia los archivos necesarios
-COPY consumer_postgres.py ./
+COPY consumer_postgres/consumer_postgres.py ./
 
 # Instala dependencias
 RUN pip install --no-cache-dir kafka-python psycopg2-binary
