@@ -2,8 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY consumer_mongo.py .
-COPY api.py .
+COPY consumer_mongo/consumer_mongo.py .
+COPY consumer_mongo/api.py .
 
 RUN pip install --no-cache-dir kafka-python pymongo fastapi uvicorn
 
