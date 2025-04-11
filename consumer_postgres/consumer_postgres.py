@@ -118,7 +118,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/get-postgres-data")
+@app.get("/get-data-postgres")
 def get_data_postgres():
     try:
         conn = psycopg2.connect(**POSTGRES_CONFIG)

@@ -66,7 +66,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/get-mongo-data")
+@app.get("/get-data-mongo")
 def get_data_mongo():
     try:
         data = list(collection.find({}, {"_id": 0})) 
