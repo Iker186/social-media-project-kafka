@@ -30,6 +30,8 @@ services:
       MONGO_URI: ${MONGO_URI}
       KAFKA_USERNAME: ${KAFKA_USERNAME}
       KAFKA_PASSWORD: ${KAFKA_PASSWORD}
+    ports:
+      - "8001:8001"
     depends_on:
       - mongo
     networks:
@@ -49,6 +51,8 @@ services:
       POSTGRES_PORT: ${POSTGRES_PORT}
       KAFKA_USERNAME: ${KAFKA_USERNAME}
       KAFKA_PASSWORD: ${KAFKA_PASSWORD}
+    ports:
+      - "8000:8000"
     depends_on:
       - postgres
     networks:

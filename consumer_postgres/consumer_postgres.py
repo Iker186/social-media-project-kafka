@@ -108,3 +108,33 @@ cur.close()
 conn.close()
 
 print(f"\n📦 Proceso finalizado: {insertados} insertados, {omitidos} duplicados.\n")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/get-postgres-data")
+def get_data_postgres():
+    try:
+        conn = psycopg2.connect(**POSTGRES_CONFIG)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM results")
+        rows = cur.fetchall()
+
+        columns = [desc[0] for desc in cur.description]
+        data = [dict(zip(columns, row)) for row in rows]
+
+        cur.close()
+        conn.close()
+
+        return {"status": "ok", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

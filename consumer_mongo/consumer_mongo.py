@@ -56,3 +56,23 @@ for message in consumer:
 
 consumer.close()
 print(f"\n📦 Proceso finalizado: {message_count} insertados, {skip_count} duplicados.\n")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/get-mongo-data")
+def get_data_mongo():
+    try:
+        data = list(collection.find({}, {"_id": 0})) 
+        return {"status": "ok", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8001)
