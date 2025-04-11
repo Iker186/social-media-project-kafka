@@ -1,3 +1,4 @@
+import traceback
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
@@ -32,8 +33,10 @@ def get_data_mongo():
     
     try:
         data = list(collection.find({}, {"_id": 0}))
+        if not data:
+            return {"status": "ok", "message": "No se encontraron datos en MongoDB."}
         return {"status": "ok", "data": data}
     except Exception as e:
         print("❌ Error al obtener datos de MongoDB:")
         traceback.print_exc()
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "Error al obtener los datos de MongoDB. Detalles en los logs."}
