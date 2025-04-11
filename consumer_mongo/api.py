@@ -34,4 +34,6 @@ def get_data_mongo():
         data = list(collection.find({}, {"_id": 0}))
         return {"status": "ok", "data": data}
     except Exception as e:
+        print("❌ Error al obtener datos de MongoDB:")
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
