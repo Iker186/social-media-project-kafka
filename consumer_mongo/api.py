@@ -28,7 +28,7 @@ except Exception as e:
 
 @app.get("/get-data-mongo")
 def get_data_mongo():
-    if collection is None:  # Cambiado de 'if not collection' a 'if collection is None'
+    if collection is None:  
         return {"status": "error", "message": "No hay conexión con MongoDB."}
     
     try:

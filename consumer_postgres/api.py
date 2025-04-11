@@ -18,7 +18,7 @@ POSTGRES_CONFIG = {
     "user": os.getenv('POSTGRES_USER'),
     "password": os.getenv('POSTGRES_PASSWORD'),
     "host": os.getenv('POSTGRES_HOST'),
-    "port": os.getenv('POSTGRES_PORT', '21406')  # puerto por defecto corregido
+    "port": os.getenv('POSTGRES_PORT', '21406')  
 }
 
 @app.get("/get-data-postgres")
