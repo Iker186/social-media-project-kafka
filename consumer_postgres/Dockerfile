@@ -1,9 +1,10 @@
+# Dockerfile en consumer_postgres/
 FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY consumer_postgres/consumer_postgres.py .
-COPY consumer_postgres/api.py .
+COPY consumer_postgres.py .
+COPY api.py .
 
 RUN pip install --no-cache-dir kafka-python psycopg2-binary fastapi uvicorn
 
