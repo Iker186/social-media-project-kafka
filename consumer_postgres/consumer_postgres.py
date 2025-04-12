@@ -1,4 +1,5 @@
 from kafka import KafkaConsumer
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import psycopg2
 import os

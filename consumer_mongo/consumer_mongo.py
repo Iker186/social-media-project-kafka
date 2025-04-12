@@ -1,5 +1,6 @@
 from kafka import KafkaConsumer
 from pymongo import MongoClient
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 
