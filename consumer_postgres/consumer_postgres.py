@@ -159,9 +159,10 @@ def get_data_postgres():
         logging.error("❌ Error al obtener datos:", exc_info=True)
         return {"status": "error", "message": str(e)}
 
-def start_consumer_in_thread():
-    threading.Thread(target=kafka_consumer_loop, daemon=True).start()
+@app.on_event("startup")
+def start_consumer():
+    thread = threading.Thread(target=kafka_consumer_loop)
+    thread.start()
 
-start_consumer_in_thread()  # <-- Esto lo lanza siempre
 
 # Este archivo lo vas a correr con `CMD ["uvicorn", "consumer_postgres:app", "--host", "0.0.0.0", "--port", "8001"]`
