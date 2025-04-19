@@ -65,6 +65,12 @@ def create_table():
 create_table()
 
 def insert_record(data: dict):
+    # Cambiar 'user_id' a 'UserID' para coincidir con el nombre en Kafka
+    user_id = data.get("UserID")
+    if not user_id:
+        logging.error(f"❌ Error: 'UserID' es nulo o no está presente en los datos: {data}")
+        return False
+
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -73,7 +79,7 @@ def insert_record(data: dict):
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (user_id) DO NOTHING;
                 """, (
-                    data.get("user_id"),
+                    user_id,
                     data.get("name", 'N/A'),
                     data.get("gender", 'N/A'),
                     data.get("dob", '1900-01-01'),
@@ -81,11 +87,12 @@ def insert_record(data: dict):
                     data.get("city", 'N/A'),
                     data.get("country", 'N/A')
                 ))
-                logging.info(f"[✓] Insertado: {data.get('user_id')}")
+                logging.info(f"[✓] Insertado: {user_id}")
                 return True
     except Exception as e:
         logging.error(f"❌ Error al insertar: {e}", exc_info=True)
         return False
+
 
 def kafka_consumer_loop():
     consumer = Consumer(KAFKA_CONFIG)
