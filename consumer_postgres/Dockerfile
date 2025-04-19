@@ -2,7 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY consumer_postgres /app/consumer_postgres
+# Copia el archivo desde el subdirectorio
+COPY consumer_postgres/consumer_postgres.py /app/consumer_postgres.py
 
 RUN apt-get update && apt-get install -y gcc librdkafka-dev && \
     pip install --no-cache-dir psycopg2-binary fastapi uvicorn confluent-kafka && \
@@ -10,4 +11,4 @@ RUN apt-get update && apt-get install -y gcc librdkafka-dev && \
 
 EXPOSE 8001
 
-CMD ["uvicorn", "consumer_postgres:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+CMD ["uvicorn", "consumer_postgres:app", "--host", "0.0.0.0", "--port", "8001"]
