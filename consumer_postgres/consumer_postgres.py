@@ -50,7 +50,6 @@ def create_table():
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS results (
                         user_id INT PRIMARY KEY,
-                        name VARCHAR(255),
                         gender VARCHAR(10),
                         dob DATE,
                         interests TEXT,
@@ -82,7 +81,6 @@ def transformar_datos(raw):
 
     return {
         "user_id": user_id,
-        "name": raw.get("Name", "N/A"),
         "gender": raw.get("Gender", "N/A"),
         "dob": dob_str,
         "interests": raw.get("Interests", "N/A"),
@@ -100,12 +98,11 @@ def insert_record(data: dict):
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO results (user_id, name, gender, dob, interests, city, country)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO results (user_id, gender, dob, interests, city, country)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (user_id) DO NOTHING;
                 """, (
                     user_id,
-                    data.get("name", 'N/A'),
                     data.get("gender", 'N/A'),
                     data.get("dob", '1900-01-01'),
                     data.get("interests", 'N/A'),
