@@ -1,48 +1,63 @@
-from fastapi import FastAPI
-import pandas as pd
-from kafka import KafkaProducer
-import json
+from flask import Flask, jsonify
+from confluent_kafka import Producer
+import requests
+import logging
 import os
 
-app = FastAPI()
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
-KAFKA_BROKER = os.getenv('KAFKA_SERVER')
-TOPIC = os.getenv('KAFKA_TOPIC_POSTGRES', 'results_postgres')
+app = Flask(__name__)
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# Leer configuración desde variables de entorno (seguridad)
+PRODUCER_CONF = {
+    'bootstrap.servers': os.getenv('KAFKA_SERVER'),
+    'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL', 'PLAINTEXT'),
+    'sasl.mechanism': os.getenv('KAFKA_SASL_MECHANISM', 'PLAIN'),
+    'sasl.username': os.getenv('KAFKA_USERNAME'),
+    'sasl.password': os.getenv('KAFKA_PASSWORD'),
+}
 
-@app.post("/send-to-kafka-postgres")
-def send_to_kafka_postgres():
+producer = Producer(PRODUCER_CONF)
+
+TOPIC = os.getenv("KAFKA_TOPIC_POSTGRES", "results_postgres")
+# Establecer la URL de los datos directamente
+DATA_URL = "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/processed_data.json/part-00000-b71226d5-3187-479e-888f-23897cd4299a-c000.json"
+
+def delivery_report(err, msg):
+    if err:
+        logging.error(f"Error al enviar mensaje: {err}")
+    else:
+        logging.info(f"Mensaje enviado a {msg.topic()}: {msg.value().decode('utf-8')}")
+
+@app.route("/send-to-kafka-postgres", methods=["POST"])
+def send_data():
     try:
-        producer = KafkaProducer(
-            bootstrap_servers=KAFKA_BROKER,
-            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
-            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM", "PLAIN"),
-            sasl_plain_username=os.getenv("KAFKA_USERNAME"),
-            sasl_plain_password=os.getenv("KAFKA_PASSWORD"),
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
-        )
+        logging.info(f"Descargando datos desde: {DATA_URL}")
+        response = requests.get(DATA_URL)
+        response.raise_for_status()
 
-        data = pd.read_csv('./data/social_media.csv')
+        lines = response.text.strip().splitlines()
+        logging.info(f"Total de registros a enviar: {len(lines)}")
 
-        for _, row in data.iterrows():
-            record = {
-                "user_id": row['UserID'],
-                "name": row['Name'],
-                "gender": row['Gender'],
-                "dob": row['DOB'],
-                "interests": row['Interests'],
-                "city": row['City'],
-                "country": row['Country'],
-                "source": "postgres"
-            }
-            producer.send(TOPIC, value=record)
-            print(f"[→] Enviado a Kafka (Postgres): {record}")
+        for line in lines:
+            producer.produce(TOPIC, line.encode("utf-8"), callback=delivery_report)
 
         producer.flush()
-        producer.close()
-        return {"status": "OK", "message": "Datos enviados a Kafka (Postgres)"}
-    
+        logging.info("Todos los datos fueron enviados correctamente.")
+        return jsonify({"status": "success", "message": f"Datos enviados al tópico '{TOPIC}'"}), 200
+
     except Exception as e:
-        return {"status": "ERROR", "message": str(e)}
+        logging.error("Error al enviar los datos", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/health")
+def health():
+    return "ok", 200
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080))  # Render usa $PORT
+    app.run(host="0.0.0.0", port=port)

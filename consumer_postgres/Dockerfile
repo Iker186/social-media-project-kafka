@@ -3,10 +3,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY consumer_postgres/consumer_postgres.py .
-COPY consumer_postgres/api.py .
 
-RUN pip install --no-cache-dir kafka-python psycopg2-binary fastapi uvicorn
+RUN apt-get update && apt-get install -y gcc librdkafka-dev && \
+    pip install --no-cache-dir psycopg2-binary fastapi uvicorn confluent-kafka && \
+    apt-get remove -y gcc && apt-get autoremove -y && apt-get clean
 
 EXPOSE 8001
 
-CMD ["sh", "-c", "python consumer_postgres.py & uvicorn api:app --host 0.0.0.0 --port 8001"]
+CMD ["python", "consumer_postgres.py"]
