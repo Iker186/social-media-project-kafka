@@ -2,6 +2,7 @@ import threading
 import logging
 import json
 import os
+from datetime import datetime, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from confluent_kafka import Consumer, KafkaError
@@ -64,11 +65,35 @@ def create_table():
 
 create_table()
 
+def transformar_datos(raw):
+    try:
+        user_id = int(raw.get("UserID", 0))
+        if user_id == 0:
+            raise ValueError
+    except:
+        user_id = None
+
+    try:
+        edad = int(raw.get("Edad", 0))
+        dob = datetime.today() - timedelta(days=edad * 365)
+        dob_str = dob.strftime("%Y-%m-%d")
+    except:
+        dob_str = "1900-01-01"
+
+    return {
+        "user_id": user_id,
+        "name": raw.get("Name", "N/A"),
+        "gender": raw.get("Gender", "N/A"),
+        "dob": dob_str,
+        "interests": raw.get("Interests", "N/A"),
+        "city": raw.get("City", "N/A"),
+        "country": raw.get("Country", "N/A")
+    }
+
 def insert_record(data: dict):
-    # Cambiar 'user_id' a 'UserID' para coincidir con el nombre en Kafka
-    user_id = data.get("UserID")
+    user_id = data.get("user_id")
     if not user_id:
-        logging.error(f"❌ Error: 'UserID' es nulo o no está presente en los datos: {data}")
+        logging.error(f"❌ user_id inválido en los datos: {data}")
         return False
 
     try:
@@ -87,12 +112,12 @@ def insert_record(data: dict):
                     data.get("city", 'N/A'),
                     data.get("country", 'N/A')
                 ))
-                logging.info(f"[✓] Insertado: {user_id}")
+                conn.commit()
+                logging.info(f"[✓] Insertado en BD: {user_id}")
                 return True
     except Exception as e:
-        logging.error(f"❌ Error al insertar: {e}", exc_info=True)
+        logging.error(f"❌ Error al insertar en PostgreSQL: {e}", exc_info=True)
         return False
-
 
 def kafka_consumer_loop():
     consumer = Consumer(KAFKA_CONFIG)
@@ -110,12 +135,13 @@ def kafka_consumer_loop():
                 continue
 
             try:
-                data = json.loads(msg.value().decode('utf-8'))
+                raw = json.loads(msg.value().decode('utf-8'))
+                data = transformar_datos(raw)
 
                 if insert_record(data):
                     consumer.commit(asynchronous=False)
             except json.JSONDecodeError as e:
-                logging.warning(f"Error de decodificación JSON: {e}")
+                logging.warning(f"⚠️ Error de decodificación JSON: {e}")
     except KeyboardInterrupt:
         logging.info("🛑 Consumidor detenido por el usuario.")
     finally:
