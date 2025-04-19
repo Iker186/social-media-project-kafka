@@ -139,15 +139,11 @@ def kafka_consumer_loop():
                     consumer.commit(asynchronous=False)
             except json.JSONDecodeError as e:
                 logging.warning(f"⚠️ Error de decodificación JSON: {e}")
-    except KeyboardInterrupt:
-        logging.info("🛑 Consumidor detenido por el usuario.")
+    except Exception as e:
+        logging.error(f"❌ Error en kafka_consumer_loop: {e}", exc_info=True)
     finally:
         consumer.close()
         logging.info("📴 Consumer cerrado.")
-
-@app.on_event("startup")
-def startup_event():
-    threading.Thread(target=kafka_consumer_loop, daemon=True).start()
 
 @app.get("/get-data-postgres")
 def get_data_postgres():
@@ -162,3 +158,10 @@ def get_data_postgres():
     except Exception as e:
         logging.error("❌ Error al obtener datos:", exc_info=True)
         return {"status": "error", "message": str(e)}
+
+def start_consumer_in_thread():
+    threading.Thread(target=kafka_consumer_loop, daemon=True).start()
+
+start_consumer_in_thread()  # <-- Esto lo lanza siempre
+
+# Este archivo lo vas a correr con `CMD ["uvicorn", "consumer_postgres:app", "--host", "0.0.0.0", "--port", "8001"]`
