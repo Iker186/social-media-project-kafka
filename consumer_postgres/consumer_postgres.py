@@ -145,6 +145,10 @@ def kafka_consumer_loop():
         consumer.close()
         logging.info("📴 Consumer cerrado.")
 
+@app.on_event("startup")
+def startup_event():
+    threading.Thread(target=kafka_consumer_loop, daemon=True).start()
+
 @app.get("/get-data-postgres")
 def get_data_postgres():
     try:
@@ -158,11 +162,3 @@ def get_data_postgres():
     except Exception as e:
         logging.error("❌ Error al obtener datos:", exc_info=True)
         return {"status": "error", "message": str(e)}
-
-def main():
-    threading.Thread(target=kafka_consumer_loop, daemon=True).start()
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
-
-if __name__ == "__main__":
-    main()
