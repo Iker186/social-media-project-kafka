@@ -27,7 +27,7 @@ PRODUCER_CONF = {
 producer = Producer(PRODUCER_CONF)
 
 TOPIC = os.getenv("KAFKA_TOPIC_MONGO", "results_topic_mongo")
-DATA_URL = os.getenv("MONGO_DATA_URL", "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/social_media.csv")
+DATA_URL = os.getenv("MONGO_DATA_URL", "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/processed_data.json/part-00000-b71226d5-3187-479e-888f-23897cd4299a-c000.json")
 
 def delivery_report(err, msg):
     if err:
