@@ -68,13 +68,15 @@ def kafka_consumer_loop():
                     if record.get("source") != "mongo":
                         continue
 
-                    user_id = record.get("user_id")
-                    if not user_id:
-                        logging.warning("⚠️ user_id inválido o ausente, saltando registro.")
+                    # Soporte para user_id o UserID
+                    user_id = record.get("user_id") or record.get("UserID")
+
+                    if not isinstance(user_id, (str, int)) or str(user_id).strip() == "":
+                        logging.warning(f"⚠️ user_id inválido o ausente en el mensaje: {record}")
                         continue
 
-                    if collection.find_one({"user_id": user_id}):
-                        logging.info(f"[⏭] user_id {user_id} ya existe. Saltando.")
+                    if collection.find_one({"UserID": user_id}):
+                        logging.info(f"[⏭] UserID {user_id} ya existe. Saltando.")
                         continue
 
                     collection.insert_one(record)
