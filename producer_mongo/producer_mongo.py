@@ -2,8 +2,6 @@ from flask import Flask, jsonify
 from confluent_kafka import Producer
 import requests
 import logging
-import csv
-import io
 import json
 import os
 
@@ -27,7 +25,10 @@ PRODUCER_CONF = {
 producer = Producer(PRODUCER_CONF)
 
 TOPIC = os.getenv("KAFKA_TOPIC_MONGO", "results_topic_mongo")
-DATA_URL = os.getenv("MONGO_DATA_URL", "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/processed_data.json/part-00000-b71226d5-3187-479e-888f-23897cd4299a-c000.json")
+DATA_URL = os.getenv(
+    "MONGO_DATA_URL",
+    "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/processed_data.json/part-00000-b71226d5-3187-479e-888f-23897cd4299a-c000.json"
+)
 
 def delivery_report(err, msg):
     if err:
@@ -42,29 +43,18 @@ def send_data_mongo():
         response = requests.get(DATA_URL)
         response.raise_for_status()
 
-        decoded_content = response.content.decode('utf-8')
-        csv_reader = csv.DictReader(io.StringIO(decoded_content))
+        lines = response.text.strip().splitlines()
+        logging.info(f"Total de registros a enviar: {len(lines)}")
 
-        count = 0
-        for row in csv_reader:
-            record = {
-                "user_id": row.get('UserID'),
-                "name": row.get('Name'),
-                "gender": row.get('Gender'),
-                "dob": row.get('DOB'),
-                "interests": row.get('Interests'),
-                "city": row.get('City'),
-                "country": row.get('Country'),
-                "source": "mongo"
-            }
-
-            message = json.dumps(record)
+        for line in lines:
+            data = json.loads(line)
+            data["source"] = "mongo"
+            message = json.dumps(data)
             producer.produce(TOPIC, message.encode("utf-8"), callback=delivery_report)
-            count += 1
 
         producer.flush()
-        logging.info(f"Total de registros enviados: {count}")
-        return jsonify({"status": "success", "message": f"{count} registros enviados al tópico '{TOPIC}'"}), 200
+        logging.info("Todos los datos fueron enviados correctamente.")
+        return jsonify({"status": "success", "message": f"Datos enviados al tópico '{TOPIC}'"}), 200
 
     except Exception as e:
         logging.error("Error al enviar los datos", exc_info=True)
@@ -75,5 +65,5 @@ def health():
     return "ok", 200
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8080))  
+    port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
