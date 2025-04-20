@@ -4,7 +4,6 @@ import requests
 import logging
 import os
 
-# Configurar logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -12,7 +11,6 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
-# Leer configuración desde variables de entorno (seguridad)
 PRODUCER_CONF = {
     'bootstrap.servers': os.getenv('KAFKA_SERVER'),
     'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL', 'PLAINTEXT'),
@@ -24,7 +22,6 @@ PRODUCER_CONF = {
 producer = Producer(PRODUCER_CONF)
 
 TOPIC = os.getenv("KAFKA_TOPIC_POSTGRES", "results_postgres")
-# Establecer la URL de los datos directamente
 DATA_URL = "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/processed_data.json/part-00000-b71226d5-3187-479e-888f-23897cd4299a-c000.json"
 
 def delivery_report(err, msg):
@@ -59,5 +56,5 @@ def health():
     return "ok", 200
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8080))  # Render usa $PORT
+    port = int(os.getenv("PORT", 8080))  
     app.run(host="0.0.0.0", port=port)

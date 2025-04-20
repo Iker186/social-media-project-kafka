@@ -1,45 +1,79 @@
-from fastapi import FastAPI
-import pandas as pd
-from kafka import KafkaProducer
+from flask import Flask, jsonify
+from confluent_kafka import Producer
+import requests
+import logging
+import csv
+import io
 import json
 import os
 
-app = FastAPI()
+# Configuración de logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
-KAFKA_BROKER = os.getenv('KAFKA_SERVER')
-TOPIC = os.getenv('KAFKA_TOPIC_MONGO', 'results_topic_mongo')
+app = Flask(__name__)
 
-@app.post("/send-to-kafka-mongo")
-def send_to_kafka():
+# Configuración del productor Kafka
+PRODUCER_CONF = {
+    'bootstrap.servers': os.getenv('KAFKA_SERVER'),
+    'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL', 'SASL_SSL'),
+    'sasl.mechanism': os.getenv('KAFKA_SASL_MECHANISM', 'SCRAM-SHA-256'),
+    'sasl.username': os.getenv('KAFKA_USERNAME'),
+    'sasl.password': os.getenv('KAFKA_PASSWORD'),
+}
+
+producer = Producer(PRODUCER_CONF)
+
+TOPIC = os.getenv("KAFKA_TOPIC_MONGO", "results_topic_mongo")
+DATA_URL = os.getenv("MONGO_DATA_URL", "https://raw.githubusercontent.com/Iker186/streamlit-social-media/refs/heads/main/results/social_media.csv")
+
+def delivery_report(err, msg):
+    if err:
+        logging.error(f"Error al enviar mensaje: {err}")
+    else:
+        logging.info(f"Mensaje enviado a {msg.topic()}: {msg.value().decode('utf-8')}")
+
+@app.route("/send-to-kafka-mongo", methods=["POST"])
+def send_data_mongo():
     try:
-        producer = KafkaProducer(
-            bootstrap_servers=KAFKA_BROKER,
-            security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "SASL_SSL"),
-            sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM", "SCRAM-SHA-256"),
-            sasl_plain_username=os.getenv("KAFKA_USERNAME"),
-            sasl_plain_password=os.getenv("KAFKA_PASSWORD"),
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
-        )
+        logging.info(f"Descargando datos desde: {DATA_URL}")
+        response = requests.get(DATA_URL)
+        response.raise_for_status()
 
-        data = pd.read_csv('./data/social_media.csv')
+        decoded_content = response.content.decode('utf-8')
+        csv_reader = csv.DictReader(io.StringIO(decoded_content))
 
-        for _, row in data.iterrows():
+        count = 0
+        for row in csv_reader:
             record = {
-                "user_id": row['UserID'],
-                "name": row['Name'],
-                "gender": row['Gender'],
-                "dob": row['DOB'],
-                "interests": row['Interests'],
-                "city": row['City'],
-                "country": row['Country'],
+                "user_id": row.get('UserID'),
+                "name": row.get('Name'),
+                "gender": row.get('Gender'),
+                "dob": row.get('DOB'),
+                "interests": row.get('Interests'),
+                "city": row.get('City'),
+                "country": row.get('Country'),
                 "source": "mongo"
             }
-            producer.send(TOPIC, value=record)
-            print(f"[→] Enviado a Kafka (Mongo): {record}")
+
+            message = json.dumps(record)
+            producer.produce(TOPIC, message.encode("utf-8"), callback=delivery_report)
+            count += 1
 
         producer.flush()
-        producer.close()
-        return {"status": "OK", "message": "Datos enviados a Kafka"}
-    
+        logging.info(f"Total de registros enviados: {count}")
+        return jsonify({"status": "success", "message": f"{count} registros enviados al tópico '{TOPIC}'"}), 200
+
     except Exception as e:
-        return {"status": "ERROR", "message": str(e)}
+        logging.error("Error al enviar los datos", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/health")
+def health():
+    return "ok", 200
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080))  
+    app.run(host="0.0.0.0", port=port)
