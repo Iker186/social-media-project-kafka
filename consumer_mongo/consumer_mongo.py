@@ -1,12 +1,39 @@
-from kafka import KafkaConsumer
-from pymongo import MongoClient
+import threading
+import logging
+import json
+import time
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import json
-import os
+from confluent_kafka import Consumer, KafkaError
+from pymongo import MongoClient
 
-KAFKA_BROKER = os.getenv('KAFKA_SERVER')
+# Configuración de logs
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+# FastAPI setup
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Kafka
+KAFKA_CONFIG = {
+    'bootstrap.servers': os.getenv('KAFKA_SERVER'),
+    'security.protocol': os.getenv('KAFKA_SECURITY_PROTOCOL', 'SASL_SSL'),
+    'sasl.mechanism': os.getenv('KAFKA_SASL_MECHANISM', 'SCRAM-SHA-256'),
+    'sasl.username': os.getenv('KAFKA_USERNAME'),
+    'sasl.password': os.getenv('KAFKA_PASSWORD'),
+    'group.id': 'mongo-consumer-group',
+    'auto.offset.reset': 'earliest',
+    'enable.auto.commit': False
+}
 TOPIC = os.getenv('KAFKA_TOPIC_MONGO', 'results_topic_mongo')
+
+# MongoDB
 MONGO_URI = os.getenv('MONGO_URI')
 DB_NAME = 'social_data'
 COLLECTION_NAME = 'results'
@@ -15,56 +42,74 @@ try:
     mongo_client = MongoClient(MONGO_URI)
     db = mongo_client[DB_NAME]
     collection = db[COLLECTION_NAME]
-    print("✅ Conexión con MongoDB exitosa.")
+    logging.info("✅ Conexión con MongoDB exitosa.")
 except Exception as e:
-    print(f"❌ Error al conectar con MongoDB: {e}")
-    exit(1)
+    logging.error(f"❌ Error al conectar con MongoDB: {e}", exc_info=True)
+    raise SystemExit(1)
 
-consumer = KafkaConsumer(
-    TOPIC,
-    bootstrap_servers=KAFKA_BROKER,
-    security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL", "SASL_SSL"),
-    sasl_mechanism=os.getenv("KAFKA_SASL_MECHANISM", "SCRAM-SHA-256"),
-    sasl_plain_username=os.getenv("KAFKA_USERNAME"),
-    sasl_plain_password=os.getenv("KAFKA_PASSWORD"),
-    auto_offset_reset='earliest',
-    enable_auto_commit=True,
-    value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-    consumer_timeout_ms=20000  
-)
+def kafka_consumer_loop():
+    while True:
+        try:
+            consumer = Consumer(KAFKA_CONFIG)
+            consumer.subscribe([TOPIC])
+            logging.info(f"🛰 Escuchando tópico '{TOPIC}'...")
 
-message_count = 0
-skip_count = 0
+            while True:
+                msg = consumer.poll(1.0)
+                if msg is None:
+                    continue
+                if msg.error():
+                    if msg.error().code() != KafkaError._PARTITION_EOF:
+                        logging.error(f"Kafka error: {msg.error()}")
+                    continue
 
-for message in consumer:
-    record = message.value
+                try:
+                    record = json.loads(msg.value().decode('utf-8'))
+                    if record.get("source") != "mongo":
+                        continue
 
-    if record.get("source") != "mongo":
-        continue
-    
-    user_id = record.get("user_id")
+                    user_id = record.get("user_id")
+                    if not user_id:
+                        logging.warning("⚠️ user_id inválido o ausente, saltando registro.")
+                        continue
 
-    if collection.find_one({"user_id": user_id}):
-        print(f"[⏭] Registro con user_id {user_id} ya existe. Saltando.")
-        skip_count += 1
-        continue
+                    if collection.find_one({"user_id": user_id}):
+                        logging.info(f"[⏭] user_id {user_id} ya existe. Saltando.")
+                        continue
 
+                    collection.insert_one(record)
+                    logging.info(f"[✓] Insertado en MongoDB: {user_id}")
+                    consumer.commit()
+
+                except json.JSONDecodeError as e:
+                    logging.warning(f"⚠️ Error decodificando JSON: {e}")
+                except Exception as e:
+                    logging.error(f"❌ Error al insertar en MongoDB: {e}", exc_info=True)
+        except Exception as e:
+            logging.error(f"❌ Error crítico en Kafka loop. Reintentando en 5s...", exc_info=True)
+            time.sleep(5)
+        finally:
+            try:
+                consumer.close()
+                logging.info("📴 Kafka consumer cerrado.")
+            except:
+                pass
+
+def heartbeat():
+    while True:
+        logging.info("✅ Servicio activo (Mongo Consumer)...")
+        time.sleep(60)
+
+@app.on_event("startup")
+def start_background_tasks():
+    threading.Thread(target=kafka_consumer_loop).start()
+    threading.Thread(target=heartbeat).start()
+
+@app.get("/get-data-mongo")
+def get_data_mongo():
     try:
-        collection.insert_one(record)
-        print(f"[✓] Insertado en MongoDB: {user_id}")
-        message_count += 1
+        data = list(collection.find({}, {"_id": 0}))  # Excluye el _id de Mongo
+        return {"status": "ok", "data": data}
     except Exception as e:
-        print(f"[❌] Error al insertar: {e}")
-
-consumer.close()
-print(f"\n📦 Proceso finalizado: {message_count} insertados, {skip_count} duplicados.\n")
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+        logging.error("❌ Error al obtener datos de MongoDB:", exc_info=True)
+        return {"status": "error", "message": str(e)}
