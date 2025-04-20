@@ -6,7 +6,7 @@ COPY consumer_mongo/consumer_mongo.py .
 
 RUN apt-get update && \
     apt-get install -y gcc librdkafka-dev curl && \
-    pip install --no-cache-dir psycopg2-binary fastapi uvicorn confluent-kafka && \
+    pip install --no-cache-dir psycopg2-binary fastapi uvicorn confluent-kafka pymongo && \
     apt-get remove -y gcc && apt-get autoremove -y && apt-get clean
 
 EXPOSE 8000
