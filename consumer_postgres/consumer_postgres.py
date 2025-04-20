@@ -2,6 +2,7 @@ import threading
 import logging
 import json
 import os
+import time
 from datetime import datetime, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -117,33 +118,48 @@ def insert_record(data: dict):
         return False
 
 def kafka_consumer_loop():
-    consumer = Consumer(KAFKA_CONFIG)
-    consumer.subscribe([TOPIC])
-    logging.info(f"🛰 Escuchando tópico '{TOPIC}'...")
+    while True:
+        try:
+            consumer = Consumer(KAFKA_CONFIG)
+            consumer.subscribe([TOPIC])
+            logging.info(f"🛰 Conectado y escuchando tópico '{TOPIC}'...")
 
-    try:
-        while True:
-            msg = consumer.poll(1.0)
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() != KafkaError._PARTITION_EOF:
-                    logging.error(f"Kafka error: {msg.error()}")
-                continue
+            while True:
+                msg = consumer.poll(1.0)
+                if msg is None:
+                    continue
+                if msg.error():
+                    if msg.error().code() != KafkaError._PARTITION_EOF:
+                        logging.error(f"Kafka error: {msg.error()}")
+                    continue
 
+                try:
+                    raw = json.loads(msg.value().decode('utf-8'))
+                    data = transformar_datos(raw)
+
+                    if insert_record(data):
+                        consumer.commit(asynchronous=False)
+                except json.JSONDecodeError as e:
+                    logging.warning(f"⚠️ Error de decodificación JSON: {e}")
+        except Exception as e:
+            logging.error(f"❌ Error fatal en Kafka loop, reintentando en 5s: {e}", exc_info=True)
+            time.sleep(5)
+        finally:
             try:
-                raw = json.loads(msg.value().decode('utf-8'))
-                data = transformar_datos(raw)
+                consumer.close()
+                logging.info("📴 Kafka consumer cerrado.")
+            except:
+                pass
 
-                if insert_record(data):
-                    consumer.commit(asynchronous=False)
-            except json.JSONDecodeError as e:
-                logging.warning(f"⚠️ Error de decodificación JSON: {e}")
-    except Exception as e:
-        logging.error(f"❌ Error en kafka_consumer_loop: {e}", exc_info=True)
-    finally:
-        consumer.close()
-        logging.info("📴 Consumer cerrado.")
+def heartbeat():
+    while True:
+        logging.info("✅ Servicio activo...")
+        time.sleep(60)
+
+@app.on_event("startup")
+def start_background_tasks():
+    threading.Thread(target=kafka_consumer_loop).start()
+    threading.Thread(target=heartbeat).start()
 
 @app.get("/get-data-postgres")
 def get_data_postgres():
@@ -158,11 +174,3 @@ def get_data_postgres():
     except Exception as e:
         logging.error("❌ Error al obtener datos:", exc_info=True)
         return {"status": "error", "message": str(e)}
-
-@app.on_event("startup")
-def start_consumer():
-    thread = threading.Thread(target=kafka_consumer_loop)
-    thread.start()
-
-
-# Este archivo lo vas a correr con `CMD ["uvicorn", "consumer_postgres:app", "--host", "0.0.0.0", "--port", "8001"]`
